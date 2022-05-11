@@ -1,0 +1,57 @@
+#Note:
+come frome linux-observability-with-bpf  chapter 6,Some code modifications were made to adapt to the new kernel version
+machine environment: centos7.6   Linux kernel  5.16.11   kernel-src: v5.17  clang15 
+
+In the machine:
+
+Enter into this example folder:
+
+```bash
+cd ~/linux-observability-with-bpf/code/chapter-6/packet-filtering-raw-sockets
+```
+
+Compile the loader
+
+```bash
+./build-loader.sh /kernel-src
+```
+
+It will create a binary file named `loader-bin`
+
+Compile the program
+
+```bash
+./build-bpf-program.sh
+```
+It will create a BPF ELF named `bpf-program.o`
+
+
+Execute the program using the loader:
+
+```
+sudo ./loader-bin bpf_program.o 
+```
+
+It will show something like this, ten results, one every second for ten seconds:
+
+```
+TCP 0 UDP 0 ICMP 0 packets
+TCP 0 UDP 0 ICMP 0 packets
+TCP 0 UDP 0 ICMP 0 packets
+TCP 0 UDP 0 ICMP 0 packets
+TCP 0 UDP 0 ICMP 4 packets
+TCP 0 UDP 0 ICMP 8 packets
+TCP 0 UDP 0 ICMP 12 packets
+TCP 0 UDP 0 ICMP 16 packets
+TCP 0 UDP 0 ICMP 16 packets
+TCP 0 UDP 0 ICMP 16 packets
+```
+
+Since the program is attached to the loopback interface `lo` (see `loader.c` line 30) we need to generate traffic on
+that interface to show the packets flow.
+
+You can simply do a ping to localhost in the VM while the program is running.
+
+```
+ping 127.0.0.1
+```
