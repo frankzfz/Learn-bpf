@@ -1,0 +1,27 @@
+#!/usr/bin/bpftrace
+
+#include <linux/skbuff.h>
+#include <linux/ip.h>
+#include <linux/udp.h>
+#include <linux/socket.h>
+
+BEGIN
+{
+	printf("Tracing icmp rev.Hit  Ctrl-C end.\n");
+}
+
+kprobe:icmp_rcv
+{
+	$skb = (struct sk_buff *)arg0;
+
+	$iph = (struct iphdr*)($skb->head + $skb->network_header);
+	$src_ip = ntop(AF_INET,$iph->saddr);
+	$dst_ip = ntop(AF_INET,$iph->daddr);
+
+	printf("src_ip:%s  ----> dst_ip:%s\n",$src_ip,$dst_ip);
+}
+
+END
+{
+	printf("OVER  bye!!")
+}

@@ -1,0 +1,83 @@
+#!/usr/bin/stap -g 
+%{
+#include <linux/kernel.h>
+#include <linux/net.h>
+#include <linux/skbuff.h>
+#include <net/ip.h>
+#include <linux/module.h>
+#include <uapi/linux/if_packet.h>
+#include <linux/fdtable.h>
+#include <net/icmp.h>
+
+	static inline void ip2str(char *to,unsigned int from)
+	{
+		int size = snprintf(to,16,"%pI4",&from);
+		to[size] = '\0'; 
+	 }
+%}
+function get_icmp_packet_info:string(skb:long)
+%{
+	int ret = -1;
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;
+	struct iphdr *ip_header;
+	unsigned int src_ip_1 = 0;
+	unsigned int  dst_ip_1 = 0;
+	char src_ip[16],dst_ip[16];
+	struct icmphdr *icmph;
+
+	if(!skb)
+	{
+		goto EXIT_F;
+	}
+	
+	ip_header = (struct iphdr *)skb_network_header(skb);
+
+
+	if(!ip_header)
+	{
+		goto EXIT_F;
+	}
+
+	src_ip_1 = (unsigned int)ip_header->saddr;
+	dst_ip_1 = (unsigned int)ip_header->daddr;
+	ip2str(src_ip,src_ip_1);
+	ip2str(dst_ip,dst_ip_1);
+
+	icmph = icmp_hdr(skb);
+	if(icmph->type == 0)
+	{
+
+		goto ECHO_ICMP;
+	}
+	if(icmph->type == 8)
+	{
+		goto REPLY_ICMP;
+	}
+
+EXIT_F:
+	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"ERROR:src_ip:%s dst_ip:%s",src_ip,dst_ip);
+ECHO_ICMP:
+	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"ECHO_ICMP:src_ip:%s dst_ip:%s",src_ip,dst_ip);
+REPLY_ICMP:
+	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"REPLY_ICMP:src_ip:%s dst_ip:%s",src_ip,dst_ip);
+%}
+
+global locations
+
+probe begin { printf("Monitoring for recv icmp packets\n") }
+probe end { printf("Stropping monitoring  packets\n") }
+
+probe kernel.function("icmp_rcv").return
+{
+	printf("%s\n",get_icmp_packet_info($skb))
+	iphdr = __get_skb_iphdr($skb)
+	saddr = format_ipaddr(__ip_skb_saddr(iphdr), @const("AF_INET"))
+  	daddr = format_ipaddr(__ip_skb_daddr(iphdr), @const("AF_INET"))
+	printf("src_ip:%s  dst_ip:=%s\n",saddr,daddr);
+	
+}
+
+probe timer.sec(5)
+{
+	exit ()
+}
