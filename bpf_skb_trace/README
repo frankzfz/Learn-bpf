@@ -1,0 +1,15 @@
+bpf_skb_trace track the process of skb in the Linux kernel.
+This is just a demo program.
+
+complie:
+mod kernel samples/bpf/Makefile
+tprogs-y += skb_trace
+skb_trace-objs := skb_trace_user.o $(TRACE_HELPERS)
+always-y += skb_trace_kern.o
+in linux-stable root dir
+make  -C samples/bpf
+
+example:
+./skb_trace -p icmp
+
+
